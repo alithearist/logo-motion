@@ -679,16 +679,39 @@ function buildFrameSvg(t, opts) {
   const M = model;
   const strokeW = Math.max(M.base.w * 0.006, 1);
 
+  // FULL-BLEED RECT — the viewBox is square, but the output can be portrait
+  // (Story) or landscape (Wide). With preserveAspectRatio="meet" the square is
+  // fitted inside the frame, leaving empty bars on two sides. Anything meant to
+  // cover the WHOLE canvas (background, grain, vignette) must therefore be
+  // drawn on this expanded rect, not on the viewBox.
+  const outAspect = outW / outH;
+  const vbAspect = vb.w / vb.h;
+  let bleedW, bleedH;
+  if (outAspect > vbAspect) {
+    bleedH = vb.h;
+    bleedW = vb.h * outAspect;
+  } else {
+    bleedW = vb.w;
+    bleedH = vb.w / outAspect;
+  }
+  const bleed = {
+    x: vb.x + vb.w / 2 - bleedW / 2,
+    y: vb.y + vb.h / 2 - bleedH / 2,
+    w: bleedW,
+    h: bleedH,
+  };
+  const bleedRect = `x="${bleed.x}" y="${bleed.y}" width="${bleed.w}" height="${bleed.h}"`;
+
   const defs = [];
   let bgMarkup = "";
   if (bg.type === "solid") {
-    bgMarkup = `<rect x="${vb.x}" y="${vb.y}" width="${vb.w}" height="${vb.h}" fill="${bg.color}"/>`;
+    bgMarkup = `<rect ${bleedRect} fill="${bg.color}"/>`;
   } else if (bg.type === "linear") {
     defs.push(`<linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${bg.color}"/><stop offset="100%" stop-color="${bg.color2}"/></linearGradient>`);
-    bgMarkup = `<rect x="${vb.x}" y="${vb.y}" width="${vb.w}" height="${vb.h}" fill="url(#bg)"/>`;
+    bgMarkup = `<rect ${bleedRect} fill="url(#bg)"/>`;
   } else {
     defs.push(`<radialGradient id="bg"><stop offset="0%" stop-color="${bg.color}"/><stop offset="100%" stop-color="${bg.color2}"/></radialGradient>`);
-    bgMarkup = `<rect x="${vb.x}" y="${vb.y}" width="${vb.w}" height="${vb.h}" fill="url(#bg)"/>`;
+    bgMarkup = `<rect ${bleedRect} fill="url(#bg)"/>`;
   }
 
   // layer A — original artwork
@@ -711,8 +734,10 @@ function buildFrameSvg(t, opts) {
     const gw = M.base.w * 0.0018;
     if (tpl.showGuides && wantGuides) {
       const cx0 = M.base.x + M.base.w / 2, cy0 = M.base.y + M.base.h / 2;
-      const halfW = (M.base.w / 2 + M.base.w * 0.5) * layer.guideDrawT;
-      const halfH = (M.base.h / 2 + M.base.h * 0.5) * layer.guideDrawT;
+      // extend guides across the full bleed so they reach the canvas edges on
+      // tall/wide formats instead of stopping at the square viewBox
+      const halfW = (bleed.w / 2 + bleed.w * 0.5) * layer.guideDrawT;
+      const halfH = (bleed.h / 2 + bleed.h * 0.5) * layer.guideDrawT;
       M.guideYs.forEach((y) => parts.push(`<line x1="${cx0 - halfW}" x2="${cx0 + halfW}" y1="${y}" y2="${y}" stroke="${accent}" stroke-width="${gw}" opacity="0.5"/>`));
       M.guideXs.forEach((x) => parts.push(`<line y1="${cy0 - halfH}" y2="${cy0 + halfH}" x1="${x}" x2="${x}" stroke="${accent}" stroke-width="${gw}" opacity="0.5"/>`));
     }
@@ -756,14 +781,14 @@ function buildFrameSvg(t, opts) {
   let grainMarkup = "";
   if (bg.grain > 0) {
     defs.push(`<filter id="grain"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="3" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/></filter>`);
-    grainMarkup = `<rect x="${vb.x}" y="${vb.y}" width="${vb.w}" height="${vb.h}" filter="url(#grain)" opacity="${(bg.grain * 0.5).toFixed(3)}" style="mix-blend-mode:multiply"/>`;
+    grainMarkup = `<rect ${bleedRect} filter="url(#grain)" opacity="${(bg.grain * 0.5).toFixed(3)}" style="mix-blend-mode:multiply"/>`;
   }
 
   // vignette
   let vig = "";
   if (bg.vignette > 0) {
     defs.push(`<radialGradient id="vig"><stop offset="45%" stop-color="#000" stop-opacity="0"/><stop offset="100%" stop-color="#000" stop-opacity="${(bg.vignette * 0.72).toFixed(3)}"/></radialGradient>`);
-    vig = `<rect x="${vb.x}" y="${vb.y}" width="${vb.w}" height="${vb.h}" fill="url(#vig)"/>`;
+    vig = `<rect ${bleedRect} fill="url(#vig)"/>`;
   }
 
   const defsMarkup = defs.length ? `<defs>${defs.join("")}</defs>` : "";
@@ -1434,6 +1459,8 @@ export default function LogoMotionApp() {
         img.onerror = () => rej(new Error("render failed"));
         img.src = url;
       });
+      c.fillStyle = bgColor;
+      c.fillRect(0, 0, outW, outH);
       c.drawImage(img, 0, 0, outW, outH);
       URL.revokeObjectURL(url);
 
@@ -1466,17 +1493,28 @@ export default function LogoMotionApp() {
     const cw = format.w, ch = format.h;
     const vb = model.base;
     const markup = extractInnerMarkup(svgText);
-    // background matches what the preview shows
+
+    // same full-bleed rect as the video/PNG exporters, so a Story or Wide
+    // export doesn't end up with empty bars above and below the artwork
+    const outAspect = cw / ch;
+    const vbAspect = vb.w / vb.h;
+    let bw, bh;
+    if (outAspect > vbAspect) { bh = vb.h; bw = vb.h * outAspect; }
+    else { bw = vb.w; bh = vb.w / outAspect; }
+    const bx = vb.x + vb.w / 2 - bw / 2;
+    const by = vb.y + vb.h / 2 - bh / 2;
+    const bleedRect = `x="${bx}" y="${by}" width="${bw}" height="${bh}"`;
+
     let bgMarkup = "";
     const defs = [];
     if (bgType === "solid") {
-      bgMarkup = `<rect x="${vb.x}" y="${vb.y}" width="${vb.w}" height="${vb.h}" fill="${bgColor}"/>`;
+      bgMarkup = `<rect ${bleedRect} fill="${bgColor}"/>`;
     } else if (bgType === "linear") {
       defs.push(`<linearGradient id="lmbg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${bgColor}"/><stop offset="100%" stop-color="${bgColor2}"/></linearGradient>`);
-      bgMarkup = `<rect x="${vb.x}" y="${vb.y}" width="${vb.w}" height="${vb.h}" fill="url(#lmbg)"/>`;
+      bgMarkup = `<rect ${bleedRect} fill="url(#lmbg)"/>`;
     } else {
       defs.push(`<radialGradient id="lmbg"><stop offset="0%" stop-color="${bgColor}"/><stop offset="100%" stop-color="${bgColor2}"/></radialGradient>`);
-      bgMarkup = `<rect x="${vb.x}" y="${vb.y}" width="${vb.w}" height="${vb.h}" fill="url(#lmbg)"/>`;
+      bgMarkup = `<rect ${bleedRect} fill="url(#lmbg)"/>`;
     }
     const defsMarkup = defs.length ? `<defs>${defs.join("")}</defs>` : "";
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${cw}" height="${ch}" viewBox="${vb.x} ${vb.y} ${vb.w} ${vb.h}">${defsMarkup}${bgMarkup}${markup}</svg>`;
@@ -1569,7 +1607,11 @@ export default function LogoMotionApp() {
           img.onerror = () => rej(new Error("frame render failed"));
           img.src = url;
         });
+        // paint the base colour first: belt-and-braces so a frame can never
+        // come out with transparent (black) edges
         cctx.clearRect(0, 0, outW, outH);
+        cctx.fillStyle = bgColor;
+        cctx.fillRect(0, 0, outW, outH);
         cctx.drawImage(img, 0, 0, outW, outH);
         URL.revokeObjectURL(url);
 
