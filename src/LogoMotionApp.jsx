@@ -752,6 +752,13 @@ function buildFrameSvg(t, opts) {
     guides += `<g opacity="${layer.handleOpacity.toFixed(4)}">${parts}</g>`;
   }
 
+  // grain — matches the preview's overlay so exports aren't unexpectedly clean
+  let grainMarkup = "";
+  if (bg.grain > 0) {
+    defs.push(`<filter id="grain"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="3" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/></filter>`);
+    grainMarkup = `<rect x="${vb.x}" y="${vb.y}" width="${vb.w}" height="${vb.h}" filter="url(#grain)" opacity="${(bg.grain * 0.5).toFixed(3)}" style="mix-blend-mode:multiply"/>`;
+  }
+
   // vignette
   let vig = "";
   if (bg.vignette > 0) {
@@ -761,53 +768,92 @@ function buildFrameSvg(t, opts) {
 
   const defsMarkup = defs.length ? `<defs>${defs.join("")}</defs>` : "";
   return {
-    svg: `<svg xmlns="http://www.w3.org/2000/svg" width="${outW}" height="${outH}" viewBox="${vb.x} ${vb.y} ${vb.w} ${vb.h}" preserveAspectRatio="xMidYMid meet">${defsMarkup}${bgMarkup}${original}${construction}${guides}${vig}</svg>`,
+    svg: `<svg xmlns="http://www.w3.org/2000/svg" width="${outW}" height="${outH}" viewBox="${vb.x} ${vb.y} ${vb.w} ${vb.h}" preserveAspectRatio="xMidYMid meet">${defsMarkup}${bgMarkup}${original}${construction}${guides}${grainMarkup}${vig}</svg>`,
     layer,
   };
 }
 
+// CREDIT LAYOUTS — how the credit block is arranged on the artwork.
+const CREDIT_LAYOUTS = [
+  { id: "split",   name: "Split",        hint: "You on the left, client on the right" },
+  { id: "stacked", name: "Stacked",      hint: "Everything in one bottom-left block" },
+  { id: "center",  name: "Centered",     hint: "Centred under the mark, editorial" },
+  { id: "corners", name: "Corners",      hint: "Handle top-left, site bottom-right" },
+  { id: "topbar",  name: "Top bar",      hint: "A single line across the top" },
+  { id: "none",    name: "None",         hint: "No credits on the artwork" },
+];
+
 // Credits are drawn straight onto the canvas rather than into the SVG, because
 // an SVG loaded through an <img> can't reach webfonts and would render them in
 // a fallback face (or drop them entirely).
-function drawCreditsOnCanvas(ctx, w, h, credits, opacity) {
-  if (!credits) return;
+function drawCreditsOnCanvas(ctx, w, h, credits, opacity, layout = "split", scale = 1) {
+  if (!credits || layout === "none") return;
   const any = credits.handle || credits.role || credits.client || credits.website;
   if (!any || opacity <= 0.01) return;
+
   const pad = Math.round(w * 0.045);
-  const big = Math.max(11, Math.round(w * 0.022));
-  const small = Math.max(10, Math.round(w * 0.019));
+  const big = Math.max(9, Math.round(w * 0.022 * scale));
+  const small = Math.max(8, Math.round(w * 0.019 * scale));
+  const lead = 1.5;
+  const mono = (px) => `${px}px "JetBrains Mono", ui-monospace, monospace`;
+  const sans = (px) => `${px}px Inter, system-ui, sans-serif`;
+
   ctx.save();
-  ctx.globalAlpha = Math.max(0, Math.min(1, opacity * 0.9));
   ctx.fillStyle = "#0B0B0E";
   ctx.textBaseline = "alphabetic";
 
-  ctx.textAlign = "left";
-  let y = h - pad;
-  if (credits.role) {
-    ctx.globalAlpha = opacity * 0.55;
-    ctx.font = `${small}px Inter, system-ui, sans-serif`;
-    ctx.fillText(credits.role, pad, y);
-    y -= small * 1.5;
-  }
-  if (credits.handle) {
-    ctx.globalAlpha = opacity * 0.75;
-    ctx.font = `${big}px "JetBrains Mono", ui-monospace, monospace`;
-    ctx.fillText(credits.handle, pad, y);
+  const put = (text, x, y, font, alpha) => {
+    if (!text) return false;
+    ctx.globalAlpha = Math.max(0, Math.min(1, opacity * alpha));
+    ctx.font = font;
+    ctx.fillText(text, x, y);
+    return true;
+  };
+
+  if (layout === "split") {
+    ctx.textAlign = "left";
+    let y = h - pad;
+    if (put(credits.role, pad, y, sans(small), 0.55)) y -= small * lead;
+    put(credits.handle, pad, y, mono(big), 0.75);
+
+    ctx.textAlign = "right";
+    let y2 = h - pad;
+    if (put(credits.website, w - pad, y2, mono(small), 0.45)) y2 -= small * lead;
+    put(credits.client, w - pad, y2, sans(small), 0.55);
+  } else if (layout === "stacked") {
+    ctx.textAlign = "left";
+    let y = h - pad;
+    if (put(credits.website, pad, y, mono(small), 0.45)) y -= small * lead;
+    if (put(credits.client, pad, y, sans(small), 0.55)) y -= small * lead;
+    if (put(credits.role, pad, y, sans(small), 0.55)) y -= small * lead;
+    put(credits.handle, pad, y, mono(big), 0.75);
+  } else if (layout === "center") {
+    ctx.textAlign = "center";
+    const cx = w / 2;
+    let y = h - pad;
+    if (put(credits.website, cx, y, mono(small), 0.45)) y -= small * lead;
+    // client and role share one line when both are present
+    const mid = [credits.role, credits.client].filter(Boolean).join("  ·  ");
+    if (put(mid, cx, y, sans(small), 0.55)) y -= small * lead;
+    put(credits.handle, cx, y, mono(big), 0.75);
+  } else if (layout === "corners") {
+    ctx.textAlign = "left";
+    put(credits.handle, pad, pad + big, mono(big), 0.75);
+    let y = pad + big + small * lead;
+    put(credits.role, pad, y, sans(small), 0.5);
+
+    ctx.textAlign = "right";
+    let y2 = h - pad;
+    if (put(credits.website, w - pad, y2, mono(small), 0.45)) y2 -= small * lead;
+    put(credits.client, w - pad, y2, sans(small), 0.55);
+  } else if (layout === "topbar") {
+    ctx.textAlign = "left";
+    put(credits.handle, pad, pad + big, mono(big), 0.7);
+    ctx.textAlign = "right";
+    const right = [credits.role, credits.client, credits.website].filter(Boolean).join("  ·  ");
+    put(right, w - pad, pad + big, sans(small), 0.5);
   }
 
-  ctx.textAlign = "right";
-  let y2 = h - pad;
-  if (credits.website) {
-    ctx.globalAlpha = opacity * 0.45;
-    ctx.font = `${small}px "JetBrains Mono", ui-monospace, monospace`;
-    ctx.fillText(credits.website, w - pad, y2);
-    y2 -= small * 1.5;
-  }
-  if (credits.client) {
-    ctx.globalAlpha = opacity * 0.55;
-    ctx.font = `${small}px Inter, system-ui, sans-serif`;
-    ctx.fillText(credits.client, w - pad, y2);
-  }
   ctx.restore();
 }
 
@@ -1018,6 +1064,91 @@ function lerpViewBox(a, b, t) {
 }
 
 /* =========================================================================
+   CREDITS OVERLAY (preview) — mirrors drawCreditsOnCanvas so what you see in
+   the preview is what lands in the exported video and PNG.
+   ========================================================================= */
+function CreditLine({ text, size, opacity, mono }) {
+  if (!text) return null;
+  return (
+    <div className={mono ? "lm-mono" : undefined} style={{ fontSize: size, opacity, lineHeight: 1.35 }}>
+      {text}
+    </div>
+  );
+}
+
+function CreditsOverlay({ credits, layout, scale, opacity, compact }) {
+  if (!credits || layout === "none") return null;
+  const { handle, role, client, website } = credits;
+  if (!handle && !role && !client && !website) return null;
+
+  const pad = compact ? 14 : 18;
+  const big = (compact ? 12 : 11) * scale;
+  const sm = (compact ? 11 : 10) * scale;
+  const base = { position: "absolute", zIndex: 7, pointerEvents: "none", opacity, color: "#0B0B0E" };
+
+  if (layout === "stacked") {
+    return (
+      <div style={{ ...base, left: 0, bottom: 0, padding: pad, maxWidth: "70%" }}>
+        <CreditLine text={handle} size={big} opacity={0.75} mono />
+        <CreditLine text={role} size={sm} opacity={0.55} />
+        <CreditLine text={client} size={sm} opacity={0.55} />
+        <CreditLine text={website} size={sm} opacity={0.45} mono />
+      </div>
+    );
+  }
+
+  if (layout === "center") {
+    const mid = [role, client].filter(Boolean).join("  ·  ");
+    return (
+      <div style={{ ...base, left: 0, right: 0, bottom: 0, padding: pad, textAlign: "center" }}>
+        <CreditLine text={handle} size={big} opacity={0.75} mono />
+        <CreditLine text={mid} size={sm} opacity={0.55} />
+        <CreditLine text={website} size={sm} opacity={0.45} mono />
+      </div>
+    );
+  }
+
+  if (layout === "corners") {
+    return (
+      <>
+        <div style={{ ...base, left: 0, top: 0, padding: pad, maxWidth: "60%" }}>
+          <CreditLine text={handle} size={big} opacity={0.75} mono />
+          <CreditLine text={role} size={sm} opacity={0.5} />
+        </div>
+        <div style={{ ...base, right: 0, bottom: 0, padding: pad, textAlign: "right", maxWidth: "60%" }}>
+          <CreditLine text={client} size={sm} opacity={0.55} />
+          <CreditLine text={website} size={sm} opacity={0.45} mono />
+        </div>
+      </>
+    );
+  }
+
+  if (layout === "topbar") {
+    const right = [role, client, website].filter(Boolean).join("  ·  ");
+    return (
+      <div style={{ ...base, left: 0, right: 0, top: 0, padding: pad, display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12 }}>
+        <CreditLine text={handle} size={big} opacity={0.7} mono />
+        <div style={{ fontSize: sm, opacity: 0.5, textAlign: "right" }}>{right}</div>
+      </div>
+    );
+  }
+
+  // "split" — the default
+  return (
+    <div style={{ ...base, left: 0, right: 0, bottom: 0, padding: pad, display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 12 }}>
+      <div style={{ minWidth: 0 }}>
+        <CreditLine text={handle} size={big} opacity={0.75} mono />
+        <CreditLine text={role} size={sm} opacity={0.55} />
+      </div>
+      <div style={{ textAlign: "right", minWidth: 0 }}>
+        <CreditLine text={client} size={sm} opacity={0.55} />
+        <CreditLine text={website} size={sm} opacity={0.45} mono />
+      </div>
+    </div>
+  );
+}
+
+/* =========================================================================
    PANEL UI PRIMITIVES
    ========================================================================= */
 function Panel({ title, children, P }) {
@@ -1100,7 +1231,7 @@ export default function LogoMotionApp() {
   const [formatId, setFormatId] = useState("4:5");
   const [feelId, setFeelId] = useState("smooth");
   const [reads, setReads] = useState("ltr");
-  const [duration, setDuration] = useState(5.0);
+  const [duration, setDuration] = useState(7.0);
 
   // COLOR
   const [accent, setAccent] = useState("#AC4EFF");
@@ -1119,6 +1250,8 @@ export default function LogoMotionApp() {
 
   // CREDITS
   const [credits, setCredits] = useState({ handle: "@yourhandle", role: "Logo design", client: "", website: "" });
+  const [creditLayout, setCreditLayout] = useState("split");
+  const [creditScale, setCreditScale] = useState(1);
 
   // CAMERA
   const [cameraMode, setCameraMode] = useState("auto"); // auto | spots
@@ -1269,6 +1402,65 @@ export default function LogoMotionApp() {
     [logoFillMode, logoFill]
   );
 
+  // PNG EXPORT — renders the CURRENT frame of the timeline to a canvas at the
+  // chosen format's full resolution and downloads it. Uses the same
+  // buildFrameSvg path as the video exporter, so the still matches the preview
+  // exactly, including whatever phase the scrubber is parked on.
+  const exportImage = useCallback(async () => {
+    if (!model || !ast) return;
+    setExportState({ status: "rendering", progress: 0, message: "" });
+    try {
+      const outW = Math.round(format.w / 2) * 2;
+      const outH = Math.round(format.h / 2) * 2;
+      const { svg, layer: frameLayer } = buildFrameSvg(progress, {
+        ast, model, tpl, feel, overlays,
+        spot: activeSpot, accent,
+        fillOverride: logoFillMode === "custom" ? logoFill : null,
+        rtl: reads === "rtl",
+        bg: { type: bgType, color: bgColor, color2: bgColor2, grain, vignette },
+        outW, outH,
+      });
+
+      const canvas = document.createElement("canvas");
+      canvas.width = outW;
+      canvas.height = outH;
+      const c = canvas.getContext("2d");
+
+      const blob = new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const img = new Image();
+      await new Promise((res, rej) => {
+        img.onload = res;
+        img.onerror = () => rej(new Error("render failed"));
+        img.src = url;
+      });
+      c.drawImage(img, 0, 0, outW, outH);
+      URL.revokeObjectURL(url);
+
+      drawCreditsOnCanvas(c, outW, outH, credits, frameLayer.baseOpacity, creditLayout, creditScale);
+
+      canvas.toBlob((png) => {
+        if (!png) {
+          setExportState({ status: "error", progress: 0, message: "Couldn't create the image." });
+          return;
+        }
+        const u = URL.createObjectURL(png);
+        const a = document.createElement("a");
+        a.href = u;
+        a.download = `${fileName.replace(/\.svg$/i, "")}-${formatId.replace(":", "x")}.png`;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(u), 4000);
+        setExportState({ status: "done", progress: 1, message: "PNG" });
+      }, "image/png");
+    } catch (err) {
+      setExportState({ status: "error", progress: 0, message: "Couldn't create the image." });
+    }
+  }, [
+    model, ast, tpl, feel, overlays, activeSpot, accent, logoFillMode, logoFill,
+    reads, bgType, bgColor, bgColor2, grain, vignette, format, formatId, progress,
+    fileName, credits, creditLayout, creditScale,
+  ]);
+
   const downloadStaticSvg = () => {
     if (!model) return;
     const cw = format.w, ch = format.h;
@@ -1326,11 +1518,11 @@ export default function LogoMotionApp() {
     setPlaying(false);
     setExportState({ status: "rendering", progress: 0, message: "" });
 
-    const FPS = 30;
-    // cap the long edge at 1080 so slower phones can keep up
-    const scale = Math.min(1, 1080 / Math.max(format.w, format.h));
-    const outW = Math.round(format.w * scale / 2) * 2; // even dims required by H.264
-    const outH = Math.round(format.h * scale / 2) * 2;
+    const FPS = 60;
+    // Export at the format's FULL native resolution — no downscaling.
+    // Story is a true 1080×1920, Wide a true 1920×1080.
+    const outW = Math.round(format.w / 2) * 2; // even dims required by H.264
+    const outH = Math.round(format.h / 2) * 2;
 
     const canvas = document.createElement("canvas");
     canvas.width = outW;
@@ -1341,7 +1533,9 @@ export default function LogoMotionApp() {
     const track = stream.getVideoTracks()[0];
     const recorder = new MediaRecorder(stream, {
       mimeType: codec.mime,
-      videoBitsPerSecond: 12_000_000,
+      // raised to match the higher resolution and frame rate — at 1440p60 the
+      // old 12 Mbps would have been spread thin and reintroduced blockiness
+      videoBitsPerSecond: 28_000_000,
     });
     const chunks = [];
     recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
@@ -1356,7 +1550,7 @@ export default function LogoMotionApp() {
       spot: activeSpot, accent,
       fillOverride: logoFillMode === "custom" ? logoFill : null,
       rtl: reads === "rtl",
-      bg: { type: bgType, color: bgColor, color2: bgColor2, vignette },
+      bg: { type: bgType, color: bgColor, color2: bgColor2, grain, vignette },
       outW, outH,
     };
 
@@ -1379,7 +1573,7 @@ export default function LogoMotionApp() {
         cctx.drawImage(img, 0, 0, outW, outH);
         URL.revokeObjectURL(url);
 
-        drawCreditsOnCanvas(cctx, outW, outH, credits, frameLayer.baseOpacity);
+        drawCreditsOnCanvas(cctx, outW, outH, credits, frameLayer.baseOpacity, creditLayout, creditScale);
 
         track.requestFrame();
         setExportState({ status: "rendering", progress: (i + 1) / totalFrames, message: "" });
@@ -1408,8 +1602,8 @@ export default function LogoMotionApp() {
     setExportState({ status: "done", progress: 1, message: codec.label });
   }, [
     model, ast, tpl, feel, overlays, activeSpot, accent, logoFillMode, logoFill,
-    reads, bgType, bgColor, bgColor2, vignette, format, formatId, effDuration,
-    fileName, credits, exportState.status,
+    reads, bgType, bgColor, bgColor2, grain, vignette, format, formatId, effDuration,
+    fileName, credits, creditLayout, creditScale, exportState.status,
   ]);
 
   // Extracted so compact mode can render it INSIDE the preview card (matching
@@ -1476,8 +1670,14 @@ export default function LogoMotionApp() {
               className={`lm-display italic font-medium ${compact ? "" : "text-[32px] leading-none sm:text-4xl sm:leading-tight"}`}
               style={compact ? { fontSize: 26, lineHeight: 1.05 } : undefined}
             >
-              Logo Motion
+              Logo Construction
             </h1>
+            <p
+              className="lm-muted"
+              style={{ fontSize: compact ? 12 : 11, marginTop: compact ? 5 : 4 }}
+            >
+              By Ali Alarbash
+            </p>
           </div>
           <label
             className={`flex items-center gap-2.5 rounded-2xl border cursor-pointer transition-colors ${compact ? "" : "px-[18px] py-[14px] sm:px-4 sm:py-3 w-fit min-w-[210px] sm:min-w-0"} ${dragOver ? "lm-drop-active" : "lm-panel"}`}
@@ -1626,9 +1826,20 @@ export default function LogoMotionApp() {
                   />
                 )}
 
-                {/* GRAIN */}
+                {/* GRAIN — the <svg> needs explicit 100% width/height, otherwise
+                    the browser falls back to its default 300×150 intrinsic size
+                    and the noise only covers the top strip of the canvas. */}
                 {grain > 0 && (
-                  <svg aria-hidden style={{ position: "absolute", inset: 0, zIndex: 5, pointerEvents: "none", opacity: grain * 0.5 }}>
+                  <svg
+                    aria-hidden
+                    width="100%"
+                    height="100%"
+                    style={{
+                      position: "absolute", inset: 0, width: "100%", height: "100%",
+                      zIndex: 5, pointerEvents: "none", opacity: grain * 0.5,
+                      mixBlendMode: "multiply",
+                    }}
+                  >
                     <filter id="lm-grain">
                       <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="3" stitchTiles="stitch" />
                       <feColorMatrix type="saturate" values="0" />
@@ -1648,42 +1859,18 @@ export default function LogoMotionApp() {
                   />
                 )}
 
-                {/* CREDITS overlay */}
-                {(credits.handle || credits.role || credits.client || credits.website) && (
-                  <div
-                    style={{
-                      position: "absolute", left: 0, right: 0, bottom: 0, zIndex: 7,
-                      pointerEvents: "none", padding: compact ? 14 : 18,
-                      display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 12,
-                      opacity: layer ? Math.max(0, layer.baseOpacity * 0.9) : 0,
-                    }}
-                  >
-                    <div style={{ minWidth: 0 }}>
-                      {credits.handle && (
-                        <div className="lm-mono" style={{ fontSize: compact ? 11 : 10, color: "#0B0B0E", opacity: 0.75 }}>
-                          {credits.handle}
-                        </div>
-                      )}
-                      {credits.role && (
-                        <div style={{ fontSize: compact ? 12 : 11, color: "#0B0B0E", opacity: 0.55 }}>
-                          {credits.role}
-                        </div>
-                      )}
-                    </div>
-                    <div style={{ textAlign: "right", minWidth: 0 }}>
-                      {credits.client && (
-                        <div style={{ fontSize: compact ? 12 : 11, color: "#0B0B0E", opacity: 0.55 }}>
-                          {credits.client}
-                        </div>
-                      )}
-                      {credits.website && (
-                        <div className="lm-mono" style={{ fontSize: compact ? 11 : 10, color: "#0B0B0E", opacity: 0.45 }}>
-                          {credits.website}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
+                {/* CREDITS overlay — a real top-level component (see
+                    CreditsOverlay). It must NOT be defined inline here: React
+                    treats components created during render as brand-new types
+                    on every pass, which remounts them and made the layout
+                    switch fail to take effect. */}
+                <CreditsOverlay
+                  credits={credits}
+                  layout={creditLayout}
+                  scale={creditScale}
+                  opacity={layer ? Math.max(0, layer.baseOpacity * 0.9) : 0}
+                  compact={compact}
+                />
               </div>
             )}
           </div>
@@ -2011,6 +2198,63 @@ export default function LogoMotionApp() {
               style={{ width: "100%", fontSize: P.body, padding: "12px 16px", borderRadius: 999, marginBottom: 10, boxSizing: "border-box" }}
             />
           ))}
+
+          <Field label="LAYOUT" hint={CREDIT_LAYOUTS.find((l) => l.id === creditLayout)?.name} P={P}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+              {CREDIT_LAYOUTS.map((l) => {
+                const active = l.id === creditLayout;
+                return (
+                  <button
+                    key={l.id}
+                    type="button"
+                    onClick={() => setCreditLayout(l.id)}
+                    className={active ? "lm-panel-active" : "lm-panel"}
+                    style={{ padding: "9px 6px", borderRadius: 12, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}
+                  >
+                    {/* tiny diagram of where the text sits in the frame */}
+                    <span style={{ position: "relative", width: 30, height: 24, borderRadius: 3, border: `1px solid ${active ? accent : "#4b4b57"}`, display: "block", flexShrink: 0 }}>
+                      {l.id === "split" && (<>
+                        <i style={{ position: "absolute", left: 3, bottom: 3, width: 9, height: 2, background: active ? accent : "#6a6a73" }} />
+                        <i style={{ position: "absolute", right: 3, bottom: 3, width: 7, height: 2, background: active ? accent : "#6a6a73" }} />
+                      </>)}
+                      {l.id === "stacked" && (<>
+                        <i style={{ position: "absolute", left: 3, bottom: 3, width: 11, height: 2, background: active ? accent : "#6a6a73" }} />
+                        <i style={{ position: "absolute", left: 3, bottom: 7, width: 8, height: 2, background: active ? accent : "#6a6a73" }} />
+                      </>)}
+                      {l.id === "center" && (<>
+                        <i style={{ position: "absolute", left: "50%", transform: "translateX(-50%)", bottom: 3, width: 14, height: 2, background: active ? accent : "#6a6a73" }} />
+                        <i style={{ position: "absolute", left: "50%", transform: "translateX(-50%)", bottom: 7, width: 9, height: 2, background: active ? accent : "#6a6a73" }} />
+                      </>)}
+                      {l.id === "corners" && (<>
+                        <i style={{ position: "absolute", left: 3, top: 3, width: 9, height: 2, background: active ? accent : "#6a6a73" }} />
+                        <i style={{ position: "absolute", right: 3, bottom: 3, width: 7, height: 2, background: active ? accent : "#6a6a73" }} />
+                      </>)}
+                      {l.id === "topbar" && (<>
+                        <i style={{ position: "absolute", left: 3, top: 3, width: 8, height: 2, background: active ? accent : "#6a6a73" }} />
+                        <i style={{ position: "absolute", right: 3, top: 3, width: 8, height: 2, background: active ? accent : "#6a6a73" }} />
+                      </>)}
+                    </span>
+                    <span style={{ fontSize: P.small - 1, color: active ? "#F3F1EE" : "#8A8A93", textAlign: "center", lineHeight: 1.2 }}>
+                      {l.name}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            <p className="lm-muted leading-relaxed" style={{ fontSize: P.small, marginTop: 8 }}>
+              {CREDIT_LAYOUTS.find((l) => l.id === creditLayout)?.hint}
+            </p>
+          </Field>
+
+          {creditLayout !== "none" && (
+            <Field label="SIZE" hint={`${Math.round(creditScale * 100)}%`} P={P}>
+              <input
+                type="range" min={0.6} max={2} step={0.05} value={creditScale}
+                onChange={(e) => setCreditScale(parseFloat(e.target.value))}
+                className="lm-slider" style={{ width: "100%", height: 3 }}
+              />
+            </Field>
+          )}
         </Panel>
 
         {/* WHAT THE ENGINE FOUND */}
@@ -2059,14 +2303,13 @@ export default function LogoMotionApp() {
           )}
 
           <p className="lm-muted" style={{ fontSize: P.small, marginTop: 10 }}>
-            {Math.round(format.w * Math.min(1, 1080 / Math.max(format.w, format.h)))}×
-            {Math.round(format.h * Math.min(1, 1080 / Math.max(format.w, format.h)))} · 30fps ·{" "}
-            {(effDuration + HOLD_SECONDS).toFixed(1)}s
+            {format.w}×{format.h} · 60fps · {(effDuration + HOLD_SECONDS).toFixed(1)}s
           </p>
 
           {exportState.status === "rendering" && (
             <p className="lm-muted leading-relaxed" style={{ fontSize: P.small, marginTop: 8 }}>
               Keep this tab in the foreground — browsers throttle background tabs and the render will stall.
+              At 60fps this takes about twice as long as the clip itself.
             </p>
           )}
           {exportState.status === "done" && (
@@ -2085,6 +2328,18 @@ export default function LogoMotionApp() {
           >
             Export still SVG · {formatId}
           </button>
+
+          <button
+            onClick={exportImage}
+            disabled={exportState.status === "rendering" || !model}
+            className="lm-chip"
+            style={{ width: "100%", padding: "13px 16px", borderRadius: 999, fontSize: P.body, marginTop: 10, cursor: "pointer" }}
+          >
+            Export image PNG · {format.w}×{format.h}
+          </button>
+          <p className="lm-muted leading-relaxed" style={{ fontSize: P.small, marginTop: 8 }}>
+            The PNG captures the frame you're currently paused on — scrub to the moment you want first.
+          </p>
 
           {videoCodec && videoCodec.ext === "webm" && (
             <div className="lm-note" style={{ marginTop: 12, padding: 12, borderRadius: 12 }}>
