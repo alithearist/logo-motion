@@ -6,74 +6,154 @@ import { Upload, Play, Pause, RotateCcw, Layers, AlertTriangle } from "lucide-re
    ========================================================================= */
 const GlobalStyle = () => (
   <style>{`
-    @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,300;0,500;0,600;1,500&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Fraunces:ital,wght@0,300;0,500;0,600;1,500&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
     .lm-root { font-family: 'Inter', sans-serif; }
-    .lm-display { font-family: 'Fraunces', serif; }
+    .lm-display {
+      font-family: var(--display-font);
+      font-style: var(--display-style);
+      font-weight: var(--display-weight);
+      letter-spacing: var(--display-tracking);
+    }
     .lm-mono { font-family: 'JetBrains Mono', monospace; }
     .lm-checker {
       background-image:
-        linear-gradient(45deg, #1c1c22 25%, transparent 25%),
-        linear-gradient(-45deg, #1c1c22 25%, transparent 25%),
-        linear-gradient(45deg, transparent 75%, #1c1c22 75%),
-        linear-gradient(-45deg, transparent 75%, #1c1c22 75%);
+        linear-gradient(45deg, var(--checker) 25%, transparent 25%),
+        linear-gradient(-45deg, var(--checker) 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, var(--checker) 75%),
+        linear-gradient(-45deg, transparent 75%, var(--checker) 75%);
       background-size: 16px 16px;
       background-position: 0 0, 0 8px, 8px -8px, -8px 0px;
-      background-color: #131316;
+      background-color: var(--checker-bg);
     }
     .lm-slider::-webkit-slider-thumb {
       -webkit-appearance: none; appearance: none;
       width: 13px; height: 13px; border-radius: 999px;
-      background: #F3F1EE; cursor: pointer; margin-top: -5px;
+      background: var(--fg); cursor: pointer; margin-top: -5px;
       box-shadow: 0 0 0 3px rgba(156,140,255,0.35);
     }
-    .lm-slider::-webkit-slider-runnable-track { height: 3px; border-radius: 999px; background: #2c2c34; }
+    .lm-slider::-webkit-slider-runnable-track { height: 3px; border-radius: 999px; background: var(--border); }
     .lm-slider { -webkit-appearance: none; appearance: none; background: transparent; }
     .lm-scroll::-webkit-scrollbar { height: 6px; }
-    .lm-scroll::-webkit-scrollbar-thumb { background: #2c2c34; border-radius: 999px; }
+    .lm-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 999px; }
 
-    /* THEME — defined as plain CSS rather than Tailwind arbitrary-value classes
-       (bg-[#0B0B0E] etc.), which don't always compile in every host. */
-    .lm-root { background: #0B0B0E; color: #F3F1EE; min-height: 100vh; width: 100%; }
-    .lm-eyebrow { color: #8A8A93; }
-    .lm-muted { color: #8A8A93; }
-    .lm-panel { background: #141418; border: 1px solid #24242B; }
-    .lm-panel:hover { border-color: #33333d; }
-    .lm-panel-active { background: rgba(156,140,255,0.08); border: 1px solid #9C8CFF; }
-    .lm-drop-active { background: rgba(156,140,255,0.06); border: 1px solid #9C8CFF; }
-    .lm-card-outline { border: 1px solid #24242B; }
-    .lm-canvas { background: #FAFAF7; }
-    .lm-btn-primary { background: #F3F1EE; color: #0B0B0E; }
-    .lm-btn-primary:hover { background: #ffffff; }
-    .lm-btn-ghost { border: 1px solid #24242B; color: #8A8A93; }
-    .lm-btn-ghost:hover { color: #F3F1EE; border-color: #3a3a44; }
-    .lm-chip { border: 1px solid #24242B; color: #8A8A93; }
-    .lm-chip-active { border: 1px solid #9C8CFF; color: #F3F1EE; }
-    .lm-accent { color: #9C8CFF; }
+    /* =====================================================================
+       THEME — every colour is a CSS variable so the whole UI can swap between
+       the dark studio theme and a light Swiss/editorial theme by changing one
+       attribute on the root. Plain CSS rather than Tailwind arbitrary values,
+       which don't reliably compile in every host.
+       ===================================================================== */
+    .lm-root {
+      /* DARK (default) */
+      --bg: #0B0B0E;
+      --fg: #F3F1EE;
+      --muted: #8A8A93;
+      --panel: #141418;
+      --border: #24242B;
+      --border-hover: #33333d;
+      --input-bg: #0E0E12;
+      --seg-on: #2A2A33;
+      --canvas: #FAFAF7;
+      --btn-bg: #F3F1EE;
+      --btn-fg: #0B0B0E;
+      --toggle-off: #3a3a44;
+      --toggle-knob: #0B0B0E;
+      --checker: #1c1c22;
+      --checker-bg: #131316;
+      --display-font: 'Fraunces', serif;
+      --display-style: italic;
+      --display-weight: 500;
+      --display-tracking: 0;
+      --radius-panel: 20px;
+      --radius-pill: 999px;
+
+      background: var(--bg);
+      color: var(--fg);
+      min-height: 100vh;
+      width: 100%;
+      max-width: 100%;
+      /* hard stop: nothing inside may widen the page. The light theme's
+         uppercase display face is much wider per character and was pushing
+         the layout sideways on narrow screens. */
+      overflow-x: hidden;
+      box-sizing: border-box;
+      transition: background .25s ease, color .25s ease;
+    }
+    .lm-root *, .lm-root *::before, .lm-root *::after { box-sizing: border-box; }
+
+    /* LIGHT — Swiss/brutalist editorial: bone paper, ink black, tight
+       grotesque display type, square corners instead of pills. */
+    .lm-root[data-theme="light"] {
+      --bg: #EFEDE8;
+      --fg: #111111;
+      --muted: #6B6862;
+      --panel: #E7E4DE;
+      --border: #CFCBC2;
+      --border-hover: #111111;
+      --input-bg: #F5F3EF;
+      --seg-on: #111111;
+      --canvas: #FFFFFF;
+      --btn-bg: #111111;
+      --btn-fg: #EFEDE8;
+      --toggle-off: #BFBBB2;
+      --toggle-knob: #EFEDE8;
+      --checker: #E4E1DA;
+      --checker-bg: #EDEAE4;
+      --display-font: 'Archivo', 'Inter', sans-serif;
+      --display-style: normal;
+      --display-weight: 800;
+      --display-tracking: -0.045em;
+      --radius-panel: 2px;
+      --radius-pill: 2px;
+    }
+    /* in light mode the segmented "on" pill inverts to ink-on-paper */
+    .lm-root[data-theme="light"] .lm-seg-on { color: #EFEDE8; }
+
+    .lm-eyebrow { color: var(--muted); }
+    .lm-muted { color: var(--muted); }
+    .lm-panel { background: var(--panel); border: 1px solid var(--border); }
+    .lm-panel:hover { border-color: var(--border-hover); }
+    .lm-panel-active { background: color-mix(in srgb, var(--accent, #9C8CFF) 10%, transparent); border: 1px solid var(--accent, #9C8CFF); }
+    .lm-drop-active { background: color-mix(in srgb, var(--accent, #9C8CFF) 8%, transparent); border: 1px solid var(--accent, #9C8CFF); }
+    .lm-card-outline { border: 1px solid var(--border); }
+    .lm-canvas { background: var(--canvas); }
+    .lm-btn-primary { background: var(--btn-bg); color: var(--btn-fg); }
+    .lm-btn-primary:hover { filter: brightness(1.08); }
+    .lm-btn-ghost { border: 1px solid var(--border); color: var(--muted); }
+    .lm-btn-ghost:hover { color: var(--fg); border-color: var(--border-hover); }
+    .lm-chip { border: 1px solid var(--border); color: var(--muted); }
+    .lm-chip-active { border: 1px solid var(--accent, #9C8CFF); color: var(--fg); }
+    .lm-accent { color: var(--accent, #9C8CFF); }
 
     /* panel UI */
     .lm-input {
-      background: #0E0E12; border: 1px solid #24242B; color: #F3F1EE;
+      background: var(--input-bg); border: 1px solid var(--border); color: var(--fg);
       outline: none; font-family: inherit;
     }
-    .lm-input:focus { border-color: #4b4b57; }
-    .lm-input::placeholder { color: #6a6a73; }
+    .lm-input:focus { border-color: var(--border-hover); }
+    .lm-input::placeholder { color: var(--muted); }
     select.lm-input { appearance: none; -webkit-appearance: none; }
-    .lm-seg { background: #0E0E12; border: 1px solid #24242B; }
-    .lm-seg-item { background: transparent; color: #8A8A93; cursor: pointer; font-family: inherit; }
-    .lm-seg-on { background: #2A2A33; color: #F3F1EE; }
+    .lm-seg { background: var(--input-bg); border: 1px solid var(--border); }
+    .lm-seg-item { background: transparent; color: var(--muted); cursor: pointer; font-family: inherit; }
+    .lm-seg-on { background: var(--seg-on); color: var(--fg); }
     .lm-toggle {
-      width: 44px; height: 26px; border-radius: 999px; background: #3a3a44;
+      width: 44px; height: 26px; border-radius: 999px; background: var(--toggle-off);
       display: inline-flex; align-items: center; padding: 3px; transition: background .18s ease; flex-shrink: 0;
     }
     .lm-toggle-knob {
-      width: 20px; height: 20px; border-radius: 999px; background: #0B0B0E;
+      width: 20px; height: 20px; border-radius: 999px; background: var(--toggle-knob);
       transition: transform .18s ease;
     }
-    .lm-toggle-on { background: #C9C4D6; }
+    .lm-toggle-on { background: var(--accent, #C9C4D6); }
     .lm-toggle-on .lm-toggle-knob { transform: translateX(18px); }
-    .lm-warn { background: rgba(229,169,74,0.08); border: 1px solid rgba(229,169,74,0.35); }
-    .lm-note { background: #0E0E12; border: 1px solid #24242B; }
+    .lm-warn { background: rgba(229,169,74,0.10); border: 1px solid rgba(229,169,74,0.40); }
+    .lm-note { background: var(--input-bg); border: 1px solid var(--border); }
     .lm-btn-accent { color: #0B0B0E; cursor: pointer; font-family: inherit; }
+    .lm-ig {
+      color: var(--muted); border: 1px solid var(--border); transition: color .15s ease, border-color .15s ease;
+    }
+    .lm-ig:hover { color: var(--fg); border-color: var(--border-hover); }
+    .lm-byline { color: var(--muted); text-decoration: none; transition: color .15s ease; }
+    .lm-byline:hover { color: var(--fg); }
   `}</style>
 );
 
@@ -99,6 +179,9 @@ function makeCubicBezierEase(x1, y1, x2, y2) {
   };
 }
 const EASE = makeCubicBezierEase(0.65, 0, 0.35, 1);
+// Gentler S-curve used for the pans between detail stops: eases out of the
+// pause and back into the next one, so multi-stop tours glide instead of darting.
+const easeInOutSoft = makeCubicBezierEase(0.45, 0, 0.2, 1);
 const clamp01 = (v) => Math.max(0, Math.min(1, v));
 const localT = (t, a, b) => (b <= a ? (t >= a ? 1 : 0) : clamp01((t - a) / (b - a)));
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -475,16 +558,38 @@ function buildGeometryModel(rootEl) {
 
   if (!art) art = { x: declared.x, y: declared.y, w: declared.w, h: declared.h };
 
-  // Square frame around the artwork's true centre, expanded so the logo fills
-  // ~SAFE_AREA of it. Square keeps margins consistent for wide and tall marks.
+  // Frame around the artwork's true centre, expanded so the logo fills
+  // ~SAFE_AREA of it.
+  //
+  // A plain square frame sized off the LONGEST side makes wide wordmarks tiny:
+  // a 10:1 lockup gets a square as tall as it is wide, so the type ends up a
+  // thin band with huge empty margins above and below. So the frame is only
+  // squared up for roughly-square marks; the wider (or taller) the artwork,
+  // the more the frame follows its proportions, capped at 2.2:1 so the
+  // margins never collapse entirely.
   const artCx = art.x + art.w / 2;
   const artCy = art.y + art.h / 2;
-  const frameSpan = Math.max(art.w, art.h) / SAFE_AREA;
+  const artRatio = art.w / art.h;
+  const MAX_FRAME_RATIO = 3.2;
+  let frameW, frameH;
+  if (artRatio >= 1) {
+    // wide mark — let the frame stretch with it, up to the cap
+    const frameRatio = Math.min(artRatio, MAX_FRAME_RATIO);
+    frameW = art.w / SAFE_AREA;
+    frameH = frameW / frameRatio;
+    // never crop: the frame must still clear the artwork's height
+    frameH = Math.max(frameH, art.h / SAFE_AREA);
+  } else {
+    const frameRatio = Math.max(artRatio, 1 / MAX_FRAME_RATIO);
+    frameH = art.h / SAFE_AREA;
+    frameW = frameH * frameRatio;
+    frameW = Math.max(frameW, art.w / SAFE_AREA);
+  }
   const base = {
-    x: artCx - frameSpan / 2,
-    y: artCy - frameSpan / 2,
-    w: frameSpan,
-    h: frameSpan,
+    x: artCx - frameW / 2,
+    y: artCy - frameH / 2,
+    w: frameW,
+    h: frameH,
   };
 
   const totalLen = shapes.reduce((s, sh) => s + sh.length, 0) || 1;
@@ -511,24 +616,33 @@ function buildGeometryModel(rootEl) {
   }
   const fb = focus?.bbox;
   let zoomTarget;
-  // Zoom depth is expressed as a fraction of the BASE frame (not the shape's own
-  // bbox), so magnification stays consistent no matter how small the focus shape
-  // is. ~46% of the frame is a readable detail view, not an extreme close-up.
-  const zoomSpan = Math.max(base.w, base.h) * 0.46;
+  // ZOOM DEPTH — keyed to the artwork's HEIGHT, not the frame's longest side.
+  // For a wide wordmark the frame is enormous relative to the letterforms, so
+  // a fraction of the frame barely magnifies anything; a multiple of the type
+  // height lands on two or three letters, which is what makes the detail shot
+  // readable. Clamped so it can't exceed the frame or collapse to a pinhole.
+  // take whichever gives the CLOSER view: a multiple of the type height (wins
+  // for wide wordmarks) or a fraction of the frame (wins for square marks).
+  let zoomSpan = Math.min(art.h * 1.5, Math.min(base.w, base.h) * 0.5);
+  zoomSpan = Math.max(zoomSpan, Math.min(base.w, base.h) * 0.14);
+
+  const clampSpot = (cx, cy) => {
+    // keep the close-up inside the artwork so it never frames blank canvas
+    const halfW = zoomSpan / 2, halfH = zoomSpan / 2;
+    const minX = art.x - halfW * 0.25, maxX = art.x + art.w + halfW * 0.25;
+    const minY = art.y - halfH * 0.25, maxY = art.y + art.h + halfH * 0.25;
+    return {
+      x: Math.min(Math.max(cx, minX + halfW * 0.5), maxX - halfW * 0.5) - halfW,
+      y: Math.min(Math.max(cy, minY + halfH * 0.5), maxY - halfH * 0.5) - halfH,
+      w: zoomSpan,
+      h: zoomSpan,
+    };
+  };
+
   if (fb && fb.width > 0 && fb.height > 0) {
-    zoomTarget = {
-      x: fb.x + fb.width * 0.5 - zoomSpan / 2,
-      y: fb.y + fb.height * 0.5 - zoomSpan / 2,
-      w: zoomSpan,
-      h: zoomSpan,
-    };
+    zoomTarget = clampSpot(fb.x + fb.width * 0.5, fb.y + fb.height * 0.5);
   } else {
-    zoomTarget = {
-      x: base.x + base.w * 0.5 - zoomSpan / 2,
-      y: base.y + base.h * 0.5 - zoomSpan / 2,
-      w: zoomSpan,
-      h: zoomSpan,
-    };
+    zoomTarget = clampSpot(base.x + base.w * 0.5, base.y + base.h * 0.5);
   }
 
   // CAMERA SPOTS — the 3 densest regions of the drawing, found by bucketing
@@ -538,11 +652,14 @@ function buildGeometryModel(rootEl) {
   shapes.forEach((sh) => sh.anchors.forEach((a) => allPts.push(a)));
   const spots = [];
   if (allPts.length > 0) {
+    // more columns for wide wordmarks so the chosen details spread along the
+    // word instead of clustering in the middle
     const GRID = 6;
-    const cellW = base.w / GRID, cellH = base.h / GRID;
+    const GRID_X = Math.max(GRID, Math.min(12, Math.round(GRID * (art.w / Math.max(art.h, 1e-6)) * 0.5)));
+    const cellW = base.w / GRID_X, cellH = base.h / GRID;
     const cells = new Map();
     allPts.forEach((p) => {
-      const gx = Math.min(GRID - 1, Math.max(0, Math.floor((p.x - base.x) / cellW)));
+      const gx = Math.min(GRID_X - 1, Math.max(0, Math.floor((p.x - base.x) / cellW)));
       const gy = Math.min(GRID - 1, Math.max(0, Math.floor((p.y - base.y) / cellH)));
       const key = `${gx}:${gy}`;
       if (!cells.has(key)) cells.set(key, { gx, gy, pts: [] });
@@ -561,17 +678,20 @@ function buildGeometryModel(rootEl) {
       if (!next) break;
       chosen.push(next);
     }
+    // Spots are picked by density, but the camera should travel in READING
+    // order, not density order. Store them left-to-right here; the timeline
+    // reverses the list for right-to-left scripts.
+    chosen.sort((a, b) => {
+      const ax = Math.min(...a.pts.map((p) => p.x));
+      const bx = Math.min(...b.pts.map((p) => p.x));
+      return ax - bx;
+    });
     chosen.forEach((c) => {
       const xs = c.pts.map((p) => p.x), ys = c.pts.map((p) => p.y);
       const cx = (Math.min(...xs) + Math.max(...xs)) / 2;
       const cy = (Math.min(...ys) + Math.max(...ys)) / 2;
-      spots.push({
-        x: cx - zoomSpan / 2,
-        y: cy - zoomSpan / 2,
-        w: zoomSpan,
-        h: zoomSpan,
-        cx, cy,
-      });
+      // reuse the same clamp as the auto target so no spot frames empty canvas
+      spots.push({ ...clampSpot(cx, cy), cx, cy });
     });
   }
   if (spots.length === 0) spots.push({ ...zoomTarget, cx: base.x + base.w / 2, cy: base.y + base.h / 2 });
@@ -673,11 +793,14 @@ function astToMarkup(node, mode, ctx) {
    background and vignette, so the exported video matches the preview.
    ========================================================================= */
 function buildFrameSvg(t, opts) {
-  const { ast, model, tpl, feel, overlays, spot, accent, fillOverride, rtl, bg, outW, outH } = opts;
-  const layer = getLayerState(t, tpl, model, { ease: feel.ease, spot, overlays });
+  const { ast, model, tpl, feel, overlays, spot, accent, fillOverride, rtl, bg, outW, outH, overlayWeight = 1, zoomStops = 1 } = opts;
+  const layer = getLayerState(t, tpl, model, { ease: feel.ease, spot, overlays, zoomStops, rtl });
   const vb = layer.camViewBox;
   const M = model;
-  const strokeW = Math.max(M.base.w * 0.006, 1);
+  // same camera-relative overlay scaling as the preview, so exported frames
+  // don't end up with overlays that swallow the mark during the zoom
+  const ovScale = (vb.w / M.base.w) * overlayWeight;
+  const strokeW = M.base.w * 0.006 * ovScale;
 
   // FULL-BLEED RECT — the viewBox is square, but the output can be portrait
   // (Story) or landscape (Wide). With preserveAspectRatio="meet" the square is
@@ -731,7 +854,7 @@ function buildFrameSvg(t, opts) {
   const wantCircles = overlays.circles !== false;
   if (layer.guideOpacity > 0.002) {
     const parts = [];
-    const gw = M.base.w * 0.0018;
+    const gw = M.base.w * 0.0018 * ovScale;
     if (tpl.showGuides && wantGuides) {
       const cx0 = M.base.x + M.base.w / 2, cy0 = M.base.y + M.base.h / 2;
       // extend guides across the full bleed so they reach the canvas edges on
@@ -750,27 +873,27 @@ function buildFrameSvg(t, opts) {
     }
     if (tpl.showBBox) {
       M.shapes.forEach((sh) => {
-        parts.push(`<rect x="${sh.bbox.x}" y="${sh.bbox.y}" width="${sh.bbox.width}" height="${sh.bbox.height}" fill="none" stroke="${accent}" stroke-width="${M.base.w * 0.0016}" stroke-dasharray="${M.base.w * 0.01} ${M.base.w * 0.008}" opacity="0.6"/>`);
+        parts.push(`<rect x="${sh.bbox.x}" y="${sh.bbox.y}" width="${sh.bbox.width}" height="${sh.bbox.height}" fill="none" stroke="${accent}" stroke-width="${M.base.w * 0.0016 * ovScale}" stroke-dasharray="${M.base.w * 0.01 * ovScale} ${M.base.w * 0.008 * ovScale}" opacity="0.6"/>`);
       });
     }
     if (parts.length) guides += `<g opacity="${layer.guideOpacity.toFixed(4)}">${parts.join("")}</g>`;
   }
   if (layer.anchorOpacity > 0.002) {
-    const s = M.base.w * 0.012;
+    const s = M.base.w * 0.012 * ovScale;
     const parts = M.shapes.map((sh) => {
-      const pts = sh.anchors.map((a) => `<rect x="${a.x - s / 2}" y="${a.y - s / 2}" width="${s}" height="${s}" fill="#FAFAF7" stroke="${accent}" stroke-width="${M.base.w * 0.002}"/>`).join("");
+      const pts = sh.anchors.map((a) => `<rect x="${a.x - s / 2}" y="${a.y - s / 2}" width="${s}" height="${s}" fill="#FAFAF7" stroke="${accent}" stroke-width="${M.base.w * 0.002 * ovScale}"/>`).join("");
       return sh.transform ? `<g transform="${escapeAttr(sh.transform)}">${pts}</g>` : pts;
     }).join("");
     guides += `<g opacity="${layer.anchorOpacity.toFixed(4)}">${parts}</g>`;
   }
   if (layer.handleOpacity > 0.002) {
-    const hw = M.base.w * 0.0014, r = M.base.w * 0.006;
+    const hw = M.base.w * 0.0014 * ovScale, r = M.base.w * 0.006 * ovScale;
     const parts = M.shapes.map((sh) => {
       const hs = sh.handles.map((sg) =>
         `<line x1="${sg.from.x}" y1="${sg.from.y}" x2="${sg.c1.x}" y2="${sg.c1.y}" stroke="${accent}" stroke-width="${hw}" opacity="0.5"/>` +
         `<line x1="${sg.to.x}" y1="${sg.to.y}" x2="${sg.c2.x}" y2="${sg.c2.y}" stroke="${accent}" stroke-width="${hw}" opacity="0.5"/>` +
-        `<circle cx="${sg.c1.x}" cy="${sg.c1.y}" r="${r}" fill="#FAFAF7" stroke="${accent}" stroke-width="${M.base.w * 0.0016}"/>` +
-        `<circle cx="${sg.c2.x}" cy="${sg.c2.y}" r="${r}" fill="#FAFAF7" stroke="${accent}" stroke-width="${M.base.w * 0.0016}"/>`
+        `<circle cx="${sg.c1.x}" cy="${sg.c1.y}" r="${r}" fill="#FAFAF7" stroke="${accent}" stroke-width="${M.base.w * 0.0016 * ovScale}"/>` +
+        `<circle cx="${sg.c2.x}" cy="${sg.c2.y}" r="${r}" fill="#FAFAF7" stroke="${accent}" stroke-width="${M.base.w * 0.0016 * ovScale}"/>`
       ).join("");
       return sh.transform ? `<g transform="${escapeAttr(sh.transform)}">${hs}</g>` : hs;
     }).join("");
@@ -976,6 +1099,8 @@ function getLayerState(t, tpl, model, opts = {}) {
     ease = EASE,
     spot = null,          // chosen camera spot (defaults to auto zoomTarget)
     overlays = null,      // per-overlay on/off overrides from the Overlays panel
+    zoomStops = 1,        // how many details the camera visits in the detail phase
+    rtl = false,          // right-to-left scripts read (and so pan) the other way
   } = opts;
 
   const base = model.base;
@@ -1003,9 +1128,18 @@ function getLayerState(t, tpl, model, opts = {}) {
     const gridEnd = 0.10;
     const outlineStart = 0.06, outlineEnd = 0.26;
     const anchorStart = 0.16, anchorEnd = 0.34;
-    const zoomInStart = 0.28, zoomInEnd = 0.50, zoomHoldEnd = 0.68, zoomBackEnd = 0.84;
-    const fadeStart = 0.80, fadeEnd = 0.94;
-    const revealStart = 0.86, revealEnd = 1.0;
+    // With more stops the detail phase needs more room, so the approach starts
+    // earlier and the zoom-in is a touch quicker — that buys time for the extra
+    // legs WITHOUT pushing the reveal past the end of the timeline.
+    const nStops = Math.max(1, Math.min(zoomStops, model.spots?.length || 1));
+    const k = (nStops - 1) / 2;                    // 0 at 1 stop, 1 at 3 stops
+    const zoomInStart = lerp(0.28, 0.22, k);
+    const zoomInEnd = lerp(0.50, 0.42, k);
+    const holdSpan = lerp(0.18, 0.34, k);
+    const zoomHoldEnd = zoomInEnd + holdSpan;
+    const zoomBackEnd = zoomHoldEnd + lerp(0.16, 0.14, k);
+    const fadeStart = Math.max(0.80, zoomBackEnd - 0.04), fadeEnd = Math.max(0.94, zoomBackEnd + 0.10);
+    const revealStart = fadeStart + (fadeEnd - fadeStart) * 0.42, revealEnd = 1.0;
 
     out.guideDrawT = ease(localT(t, 0, gridEnd));
     out.guideOpacity = (wantGuides || wantBBox || wantCircles) ? localT(t, 0, gridEnd * 0.7) : 0;
@@ -1020,11 +1154,38 @@ function getLayerState(t, tpl, model, opts = {}) {
     if (!wantGuides) out.guideOpacity = wantCircles || wantBBox ? out.guideOpacity : 0;
 
     if (tpl.showZoom) {
+      // MULTI-STOP CAMERA — when zoomStops > 1 the detail phase is divided into
+      // equal legs and the camera glides from one detail to the next, holding
+      // briefly on each, before pulling back out at the end.
+      // model.spots are stored left-to-right; flip for Arabic/Hebrew so the
+      // camera starts on the first letter the eye reads, not the last.
+      const ordered = model.spots && model.spots.length
+        ? (rtl ? [...model.spots].reverse() : model.spots)
+        : [zt];
+      const stops = spot
+        ? [spot]                                   // user picked one explicitly
+        : ordered.slice(0, Math.max(1, Math.min(zoomStops, ordered.length)));
+
       let vb;
       if (t < zoomInStart) vb = base;
-      else if (t < zoomInEnd) vb = lerpViewBox(base, zt, ease(localT(t, zoomInStart, zoomInEnd)));
-      else if (t < zoomHoldEnd) vb = zt;
-      else if (t < zoomBackEnd) vb = lerpViewBox(zt, base, ease(localT(t, zoomHoldEnd, zoomBackEnd)));
+      else if (t < zoomInEnd) vb = lerpViewBox(base, stops[0], ease(localT(t, zoomInStart, zoomInEnd)));
+      else if (t < zoomHoldEnd) {
+        if (stops.length === 1) vb = stops[0];
+        else {
+          // Split the hold across the stops: each leg is a pause on the detail
+          // then a glide to the next. More stops means less time per leg, so
+          // the pause takes a LARGER share as stops increase — otherwise the
+          // camera reads as constantly rushing rather than inspecting.
+          const u = localT(t, zoomInEnd, zoomHoldEnd) * (stops.length - 1);
+          const i = Math.min(Math.floor(u), stops.length - 2);
+          const legT = u - i;
+          const HOLD = stops.length >= 3 ? 0.62 : 0.5;
+          // ease both into and out of the move so it settles instead of snapping
+          const glide = legT <= HOLD ? 0 : easeInOutSoft((legT - HOLD) / (1 - HOLD));
+          vb = lerpViewBox(stops[i], stops[i + 1], glide);
+        }
+      }
+      else if (t < zoomBackEnd) vb = lerpViewBox(stops[stops.length - 1], base, ease(localT(t, zoomHoldEnd, zoomBackEnd)));
       else vb = base;
       out.camViewBox = vb;
     } else out.camViewBox = base;
@@ -1178,7 +1339,7 @@ function CreditsOverlay({ credits, layout, scale, opacity, compact }) {
    ========================================================================= */
 function Panel({ title, children, P }) {
   return (
-    <div className="lm-panel" style={{ marginTop: P.gap, padding: P.pad, borderRadius: 20 }}>
+    <div className="lm-panel" style={{ marginTop: P.gap, padding: P.pad, borderRadius: "var(--radius-panel)" }}>
       <div className="font-medium" style={{ fontSize: P.title, marginBottom: 14 }}>{title}</div>
       {children}
     </div>
@@ -1199,13 +1360,13 @@ function Field({ label, hint, children, P }) {
 
 function Segmented({ options, value, onChange, P }) {
   return (
-    <div className="lm-seg" style={{ display: "flex", padding: 4, borderRadius: 999 }}>
+    <div className="lm-seg" style={{ display: "flex", padding: 4, borderRadius: "var(--radius-pill)" }}>
       {options.map((o) => (
         <button
           key={o.id}
           onClick={() => onChange(o.id)}
           className={value === o.id ? "lm-seg-item lm-seg-on" : "lm-seg-item"}
-          style={{ flex: 1, padding: "10px 8px", borderRadius: 999, fontSize: P.body, border: "none" }}
+          style={{ flex: 1, padding: "10px 8px", borderRadius: "var(--radius-pill)", fontSize: P.body, border: "none" }}
         >
           {o.label}
         </button>
@@ -1234,7 +1395,7 @@ function ColorRow({ value, onChange, P }) {
         value={value}
         onChange={(e) => onChange(e.target.value)}
         className="lm-mono lm-input"
-        style={{ flex: 1, minWidth: 0, fontSize: P.body, padding: "12px 16px", borderRadius: 999 }}
+        style={{ flex: 1, minWidth: 0, fontSize: P.body, padding: "12px 16px", borderRadius: "var(--radius-pill)" }}
       />
     </div>
   );
@@ -1274,9 +1435,18 @@ export default function LogoMotionApp() {
   const [overlays, setOverlays] = useState({ guides: true, anchors: true, handles: true, circles: true });
 
   // CREDITS
-  const [credits, setCredits] = useState({ handle: "@yourhandle", role: "Logo design", client: "", website: "" });
+  const [credits, setCredits] = useState({ handle: "@alitheartist.sa", role: "Logo design", client: "", website: "" });
   const [creditLayout, setCreditLayout] = useState("split");
   const [creditScale, setCreditScale] = useState(1);
+
+  // THEME — "dark" (studio) or "light" (Swiss editorial)
+  const [theme, setTheme] = useState("dark");
+
+  // OVERLAY WEIGHT — thickness of the technical overlay (stroke, anchors,
+  // handles). 1 = default. Lower it when overlays smother a detailed mark.
+  const [overlayWeight, setOverlayWeight] = useState(1);
+  // how many different details the camera visits during the detail phase
+  const [zoomStops, setZoomStops] = useState(1);
 
   // CAMERA
   const [cameraMode, setCameraMode] = useState("auto"); // auto | spots
@@ -1396,29 +1566,47 @@ export default function LogoMotionApp() {
   };
 
   const hasLiveText = useMemo(() => astHasLiveText(ast), [ast]);
+  // spots in reading order — the numbers in the picker, the tour order and the
+  // manual selection all use this same list so they can't disagree
+  const orderedSpots = useMemo(() => {
+    if (!model?.spots?.length) return [];
+    return reads === "rtl" ? [...model.spots].reverse() : model.spots;
+  }, [model, reads]);
+
   const activeSpot = useMemo(() => {
-    if (!model) return null;
-    if (cameraMode === "spots" && model.spots?.length) {
-      return model.spots[Math.min(spotIndex, model.spots.length - 1)];
+    if (!orderedSpots.length) return null;
+    if (cameraMode === "spots") {
+      return orderedSpots[Math.min(spotIndex, orderedSpots.length - 1)];
     }
     return null;
-  }, [model, cameraMode, spotIndex]);
+  }, [orderedSpots, cameraMode, spotIndex]);
 
   const layer = useMemo(
-    () => (model ? getLayerState(progress, tpl, model, { ease: feel.ease, spot: activeSpot, overlays }) : null),
-    [progress, tpl, model, feel, activeSpot, overlays]
+    () => (model ? getLayerState(progress, tpl, model, { ease: feel.ease, spot: activeSpot, overlays, zoomStops, rtl: reads === "rtl" }) : null),
+    [progress, tpl, model, feel, activeSpot, overlays, zoomStops, reads]
   );
+
+  const camVb = layer
+    ? layer.camViewBox
+    : (model ? model.base : (declaredViewBoxFromAttrs(ast?.attrs) || { x: 0, y: 0, w: 200, h: 200 }));
+  const camViewBoxStr = `${camVb.x} ${camVb.y} ${camVb.w} ${camVb.h}`;
+
+  // OVERLAY SCALE — overlay sizes are in SVG user units, so when the camera
+  // zooms in (a smaller viewBox) a fixed stroke width blows up on screen and
+  // swallows the artwork. Scaling by the current viewBox keeps every overlay
+  // element visually CONSTANT no matter how deep the zoom goes.
+  const ovScale = model ? (camVb.w / model.base.w) * overlayWeight : overlayWeight;
 
   const constructionCtx = useMemo(() => {
     if (!model) return null;
     return {
       counter: { i: 0 },
       model, layer,
-      strokeW: Math.max(model.base.w * 0.006, 1),
+      strokeW: model.base.w * 0.006 * ovScale,
       accent,
       rtl: reads === "rtl",
     };
-  }, [model, layer, accent, reads]);
+  }, [model, layer, accent, reads, ovScale]);
 
   // context for the untouched original layer — carries only the optional fill
   // override, nothing else
@@ -1443,7 +1631,7 @@ export default function LogoMotionApp() {
         fillOverride: logoFillMode === "custom" ? logoFill : null,
         rtl: reads === "rtl",
         bg: { type: bgType, color: bgColor, color2: bgColor2, grain, vignette },
-        outW, outH,
+        outW, outH, overlayWeight, zoomStops,
       });
 
       const canvas = document.createElement("canvas");
@@ -1484,7 +1672,7 @@ export default function LogoMotionApp() {
     }
   }, [
     model, ast, tpl, feel, overlays, activeSpot, accent, logoFillMode, logoFill,
-    reads, bgType, bgColor, bgColor2, grain, vignette, format, formatId, progress,
+    reads, bgType, bgColor, bgColor2, grain, vignette, format, formatId, progress, overlayWeight, zoomStops,
     fileName, credits, creditLayout, creditScale,
   ]);
 
@@ -1526,10 +1714,6 @@ export default function LogoMotionApp() {
     URL.revokeObjectURL(url);
   };
 
-  const camVb = layer
-    ? layer.camViewBox
-    : (model ? model.base : (declaredViewBoxFromAttrs(ast?.attrs) || { x: 0, y: 0, w: 200, h: 200 }));
-  const camViewBoxStr = `${camVb.x} ${camVb.y} ${camVb.w} ${camVb.h}`;
 
   // resolved once — decides whether the button says MP4 or WebM
   const videoCodec = useMemo(() => pickRecorderMime(), []);
@@ -1589,7 +1773,7 @@ export default function LogoMotionApp() {
       fillOverride: logoFillMode === "custom" ? logoFill : null,
       rtl: reads === "rtl",
       bg: { type: bgType, color: bgColor, color2: bgColor2, grain, vignette },
-      outW, outH,
+      outW, outH, overlayWeight, zoomStops,
     };
 
     const startedAt = performance.now();
@@ -1644,7 +1828,7 @@ export default function LogoMotionApp() {
     setExportState({ status: "done", progress: 1, message: codec.label });
   }, [
     model, ast, tpl, feel, overlays, activeSpot, accent, logoFillMode, logoFill,
-    reads, bgType, bgColor, bgColor2, grain, vignette, format, formatId, effDuration,
+    reads, bgType, bgColor, bgColor2, grain, vignette, format, formatId, effDuration, overlayWeight, zoomStops,
     fileName, credits, creditLayout, creditScale, exportState.status,
   ]);
 
@@ -1660,7 +1844,7 @@ export default function LogoMotionApp() {
         className={`rounded-full lm-btn-primary flex items-center justify-center shrink-0 active:scale-95 transition-transform ${compact ? "" : "w-9 h-9 sm:w-10 sm:h-10"}`}
         style={compact ? { width: 44, height: 44 } : undefined}
       >
-        {playing ? <Pause size={compact ? 16 : 15} fill="#0B0B0E" /> : <Play size={compact ? 16 : 15} fill="#0B0B0E" className="ml-0.5" />}
+        {playing ? <Pause size={compact ? 16 : 15} fill="currentColor" /> : <Play size={compact ? 16 : 15} fill="currentColor" className="ml-0.5" />}
       </button>
       <button
         onClick={() => { elapsedSecRef.current = 0; setProgress(0); setPlaying(true); }}
@@ -1689,7 +1873,12 @@ export default function LogoMotionApp() {
   );
 
   return (
-    <div ref={rootRef} className="lm-root">
+    <div
+      ref={rootRef}
+      className="lm-root"
+      data-theme={theme}
+      style={{ "--accent": accent }}
+    >
       <GlobalStyle />
 
       <div
@@ -1699,27 +1888,71 @@ export default function LogoMotionApp() {
         {/* header — side-by-side on mobile like the reference: title left, upload right */}
         <div
           className={compact ? "" : "flex items-start sm:items-center justify-between gap-3 sm:gap-4 flex-col sm:flex-row mb-4 sm:mb-8"}
-          style={compact ? { display: "grid", gridTemplateColumns: "1fr 170px", gap: 12, alignItems: "start", marginBottom: 18 } : undefined}
+          style={compact ? { display: "grid", gridTemplateColumns: "minmax(0,1fr) 150px", gap: 12, alignItems: "start", marginBottom: 18 } : undefined}
         >
           <div>
-            <p
-              className={`lm-mono lm-eyebrow tracking-[0.2em] ${compact ? "" : "text-[10px] sm:text-[11px] mb-0.5 sm:mb-1"}`}
-              style={compact ? { fontSize: 11, marginBottom: 5, lineHeight: 1.3 } : undefined}
-            >
-              VECTOR CONSTRUCTION STUDIO
-            </p>
+            <div className="flex items-center gap-2" style={{ marginBottom: compact ? 5 : 4, minWidth: 0 }}>
+              <p
+                className={`lm-mono lm-eyebrow tracking-[0.2em] ${compact ? "" : "text-[10px] sm:text-[11px]"}`}
+                style={compact
+                  ? { fontSize: 10, lineHeight: 1.3, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }
+                  : undefined}
+              >
+                VECTOR CONSTRUCTION STUDIO
+              </p>
+              {/* THEME TOGGLE */}
+              <button
+                type="button"
+                onClick={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}
+                className="lm-chip"
+                aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
+                title={theme === "dark" ? "Editorial (light)" : "Studio (dark)"}
+                style={{
+                  display: "inline-flex", alignItems: "center", justifyContent: "center",
+                  width: 26, height: 26, borderRadius: "var(--radius-pill)",
+                  cursor: "pointer", background: "transparent", flexShrink: 0, padding: 0,
+                }}
+              >
+                {theme === "dark" ? (
+                  /* sun */
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
+                    <circle cx="12" cy="12" r="4" />
+                    <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+                  </svg>
+                ) : (
+                  /* moon */
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                  </svg>
+                )}
+              </button>
+            </div>
             <h1
-              className={`lm-display italic font-medium ${compact ? "" : "text-[32px] leading-none sm:text-4xl sm:leading-tight"}`}
-              style={compact ? { fontSize: 26, lineHeight: 1.05 } : undefined}
+              className={`lm-display ${compact ? "" : "text-[32px] leading-none sm:text-4xl sm:leading-tight"}`}
+              style={{
+                // the light theme sets an uppercase condensed face, which is much
+                // wider per character — without these the long word forces the
+                // grid column open and pushes the whole page off-screen
+                textTransform: theme === "light" ? "uppercase" : "none",
+                overflowWrap: "anywhere",
+                minWidth: 0,
+                maxWidth: "100%",
+                ...(compact
+                  ? { fontSize: theme === "light" ? 24 : 26, lineHeight: 1.04 }
+                  : {}),
+              }}
             >
               Logo Construction
             </h1>
-            <p
-              className="lm-muted"
-              style={{ fontSize: compact ? 12 : 11, marginTop: compact ? 5 : 4 }}
+            <a
+              href="https://www.instagram.com/alitheartist.sa"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="lm-byline"
+              style={{ fontSize: compact ? 12 : 11, marginTop: compact ? 5 : 4, display: "inline-block" }}
             >
               By Ali Alarbash
-            </p>
+            </a>
           </div>
           <label
             className={`flex items-center gap-2.5 rounded-2xl border cursor-pointer transition-colors ${compact ? "" : "px-[18px] py-[14px] sm:px-4 sm:py-3 w-fit min-w-[210px] sm:min-w-0"} ${dragOver ? "lm-drop-active" : "lm-panel"}`}
@@ -1811,21 +2044,21 @@ export default function LogoMotionApp() {
                         {tpl.showGuides && model.guideYs.map((y, i) => {
                           const cx0 = model.base.x + model.base.w / 2;
                           const half = (model.base.w / 2 + model.base.w * 0.5) * layer.guideDrawT;
-                          return <line key={`h${i}`} x1={cx0 - half} x2={cx0 + half} y1={y} y2={y} stroke={accent} strokeWidth={model.base.w * 0.0018} opacity={0.5} />;
+                          return <line key={`h${i}`} x1={cx0 - half} x2={cx0 + half} y1={y} y2={y} stroke={accent} strokeWidth={model.base.w * 0.0018 * ovScale} opacity={0.5} />;
                         })}
                         {tpl.showGuides && model.guideXs.map((x, i) => {
                           const cy0 = model.base.y + model.base.h / 2;
                           const half = (model.base.h / 2 + model.base.h * 0.5) * layer.guideDrawT;
-                          return <line key={`v${i}`} y1={cy0 - half} y2={cy0 + half} x1={x} x2={x} stroke={accent} strokeWidth={model.base.w * 0.0018} opacity={0.5} />;
+                          return <line key={`v${i}`} y1={cy0 - half} y2={cy0 + half} x1={x} x2={x} stroke={accent} strokeWidth={model.base.w * 0.0018 * ovScale} opacity={0.5} />;
                         })}
                         {tpl.showCircles && model.shapes.map((sh) => {
                           const cx = sh.bbox.x + sh.bbox.width / 2, cy = sh.bbox.y + sh.bbox.height / 2;
                           const r = (Math.max(sh.bbox.width, sh.bbox.height) / 2) * 1.06;
-                          return <circle key={`gc${sh.id}`} cx={cx} cy={cy} r={r * layer.guideDrawT} fill="none" stroke={accent} strokeWidth={model.base.w * 0.0018} opacity={0.45} />;
+                          return <circle key={`gc${sh.id}`} cx={cx} cy={cy} r={r * layer.guideDrawT} fill="none" stroke={accent} strokeWidth={model.base.w * 0.0018 * ovScale} opacity={0.45} />;
                         })}
                         {tpl.showBBox && model.shapes.map((sh) => (
                           <rect key={`bb${sh.id}`} x={sh.bbox.x} y={sh.bbox.y} width={sh.bbox.width} height={sh.bbox.height}
-                            fill="none" stroke={accent} strokeWidth={model.base.w * 0.0016} strokeDasharray={`${model.base.w * 0.01} ${model.base.w * 0.008}`} opacity={0.6} />
+                            fill="none" stroke={accent} strokeWidth={model.base.w * 0.0016 * ovScale} strokeDasharray={`${model.base.w * 0.01 * ovScale} ${model.base.w * 0.008 * ovScale}`} opacity={0.6} />
                         ))}
                       </g>
                     )}
@@ -1833,9 +2066,9 @@ export default function LogoMotionApp() {
                     {layer.anchorOpacity > 0.002 && model.shapes.map((sh) => (
                       <g key={`an-${sh.id}`} className="anchor-overlay" transform={sh.transform}>
                         {sh.anchors.map((a, i) => {
-                          const s = model.base.w * 0.012;
+                          const s = model.base.w * 0.012 * ovScale;
                           return <rect key={`an${i}`} x={a.x - s / 2} y={a.y - s / 2} width={s} height={s}
-                            fill="#FAFAF7" stroke={accent} strokeWidth={model.base.w * 0.002} opacity={layer.anchorOpacity} />;
+                            fill="#FAFAF7" stroke={accent} strokeWidth={model.base.w * 0.002 * ovScale} opacity={layer.anchorOpacity} />;
                         })}
                       </g>
                     ))}
@@ -1844,10 +2077,10 @@ export default function LogoMotionApp() {
                       <g key={`bz-${sh.id}`} className="bezier-overlay" transform={sh.transform} opacity={layer.handleOpacity}>
                         {sh.handles.map((seg, i) => (
                           <g key={`hd${i}`}>
-                            <line x1={seg.from.x} y1={seg.from.y} x2={seg.c1.x} y2={seg.c1.y} stroke={accent} strokeWidth={model.base.w * 0.0014} opacity={0.5} />
-                            <line x1={seg.to.x} y1={seg.to.y} x2={seg.c2.x} y2={seg.c2.y} stroke={accent} strokeWidth={model.base.w * 0.0014} opacity={0.5} />
-                            <circle cx={seg.c1.x} cy={seg.c1.y} r={model.base.w * 0.006} fill="#FAFAF7" stroke={accent} strokeWidth={model.base.w * 0.0016} />
-                            <circle cx={seg.c2.x} cy={seg.c2.y} r={model.base.w * 0.006} fill="#FAFAF7" stroke={accent} strokeWidth={model.base.w * 0.0016} />
+                            <line x1={seg.from.x} y1={seg.from.y} x2={seg.c1.x} y2={seg.c1.y} stroke={accent} strokeWidth={model.base.w * 0.0014 * ovScale} opacity={0.5} />
+                            <line x1={seg.to.x} y1={seg.to.y} x2={seg.c2.x} y2={seg.c2.y} stroke={accent} strokeWidth={model.base.w * 0.0014 * ovScale} opacity={0.5} />
+                            <circle cx={seg.c1.x} cy={seg.c1.y} r={model.base.w * 0.006 * ovScale} fill="#FAFAF7" stroke={accent} strokeWidth={model.base.w * 0.0016 * ovScale} />
+                            <circle cx={seg.c2.x} cy={seg.c2.y} r={model.base.w * 0.006 * ovScale} fill="#FAFAF7" stroke={accent} strokeWidth={model.base.w * 0.0016 * ovScale} />
                           </g>
                         ))}
                       </g>
@@ -2074,7 +2307,7 @@ export default function LogoMotionApp() {
                     key={c}
                     onClick={() => setAccent(c)}
                     title={c}
-                    style={{ width: 34, height: 34, borderRadius: 999, background: c, border: "1px solid #2c2c34" }}
+                    style={{ width: 34, height: 34, borderRadius: "var(--radius-pill)", background: c, border: "1px solid #2c2c34" }}
                   />
                 ))}
               </div>
@@ -2086,7 +2319,7 @@ export default function LogoMotionApp() {
               <button
                 onClick={() => setLogoFillMode("original")}
                 className={logoFillMode === "original" ? "lm-chip-active" : "lm-chip"}
-                style={{ padding: "9px 16px", borderRadius: 999, fontSize: P.body }}
+                style={{ padding: "9px 16px", borderRadius: "var(--radius-pill)", fontSize: P.body }}
               >
                 Original
               </button>
@@ -2159,6 +2392,18 @@ export default function LogoMotionApp() {
           <p className="lm-muted leading-relaxed" style={{ fontSize: P.small, marginTop: 10 }}>
             Turns overlays off for templates that use them. It won't add an overlay to a template built without it.
           </p>
+
+          <Field label="WEIGHT" hint={`${Math.round(overlayWeight * 100)}%`} P={P}>
+            <input
+              type="range" min={0.25} max={1.75} step={0.05} value={overlayWeight}
+              onChange={(e) => setOverlayWeight(parseFloat(e.target.value))}
+              className="lm-slider" style={{ width: "100%", height: 3 }}
+            />
+            <p className="lm-muted leading-relaxed" style={{ fontSize: P.small, marginTop: 8 }}>
+              Thickness of the outlines, anchors and handles. Turn it down for detailed marks where the
+              overlay hides the artwork underneath.
+            </p>
+          </Field>
         </Panel>
 
         {/* CAMERA */}
@@ -2169,6 +2414,20 @@ export default function LogoMotionApp() {
             onChange={setCameraMode}
             P={P}
           />
+          {cameraMode === "auto" && orderedSpots.length > 1 && (
+            <Field label="DETAILS VISITED" hint={`${Math.min(zoomStops, orderedSpots.length)} of ${orderedSpots.length}`} P={P}>
+              <Segmented
+                options={orderedSpots.slice(0, 3).map((_, i) => ({ id: String(i + 1), label: String(i + 1) }))}
+                value={String(Math.min(zoomStops, orderedSpots.length))}
+                onChange={(v) => { setZoomStops(parseInt(v, 10)); elapsedSecRef.current = 0; setProgress(0); setPlaying(true); }}
+                P={P}
+              />
+              <p className="lm-muted leading-relaxed" style={{ fontSize: P.small, marginTop: 8 }}>
+                How many details the camera moves through before pulling back out. It follows the\n                reading direction set under Output — right to left for Arabic.
+              </p>
+            </Field>
+          )}
+
           {model && (
             <div style={{ marginTop: 14 }}>
               <div
@@ -2179,8 +2438,8 @@ export default function LogoMotionApp() {
                   <g opacity={0.22}>
                     {ast?.children.map((c, i) => renderAstNode(c, `cam${i}`, "original", originalCtx))}
                   </g>
-                  {model.spots.map((sp, i) => {
-                    const chosen = cameraMode === "spots" && i === spotIndex;
+                  {orderedSpots.map((sp, i) => {
+                    const chosen = cameraMode === "spots" ? i === spotIndex : i < Math.min(zoomStops, orderedSpots.length);
                     return (
                       <g key={`sp${i}`}>
                         <rect
@@ -2204,12 +2463,12 @@ export default function LogoMotionApp() {
               </div>
               {cameraMode === "spots" && (
                 <div className="flex gap-2 justify-center" style={{ marginTop: 12 }}>
-                  {model.spots.map((_, i) => (
+                  {orderedSpots.map((_, i) => (
                     <button
                       key={i}
                       onClick={() => { setSpotIndex(i); elapsedSecRef.current = 0; setProgress(0); setPlaying(true); }}
                       className={i === spotIndex ? "lm-chip-active" : "lm-chip"}
-                      style={{ padding: "8px 18px", borderRadius: 999, fontSize: P.body }}
+                      style={{ padding: "8px 18px", borderRadius: "var(--radius-pill)", fontSize: P.body }}
                     >
                       {i + 1}
                     </button>
@@ -2237,7 +2496,7 @@ export default function LogoMotionApp() {
               placeholder={placeholder}
               onChange={(e) => setCredits((c) => ({ ...c, [key]: e.target.value }))}
               className="lm-input"
-              style={{ width: "100%", fontSize: P.body, padding: "12px 16px", borderRadius: 999, marginBottom: 10, boxSizing: "border-box" }}
+              style={{ width: "100%", fontSize: P.body, padding: "12px 16px", borderRadius: "var(--radius-pill)", marginBottom: 10, boxSizing: "border-box" }}
             />
           ))}
 
@@ -2326,7 +2585,7 @@ export default function LogoMotionApp() {
             disabled={exportState.status === "rendering" || !model}
             className="lm-btn-accent"
             style={{
-              width: "100%", padding: "15px 20px", borderRadius: 999,
+              width: "100%", padding: "15px 20px", borderRadius: "var(--radius-pill)",
               fontSize: P.body, fontWeight: 600, border: "none",
               background: accent,
               opacity: exportState.status === "rendering" ? 0.6 : 1,
@@ -2339,7 +2598,7 @@ export default function LogoMotionApp() {
           </button>
 
           {exportState.status === "rendering" && (
-            <div style={{ height: 3, borderRadius: 999, background: "#2c2c34", marginTop: 12, overflow: "hidden" }}>
+            <div style={{ height: 3, borderRadius: "var(--radius-pill)", background: "#2c2c34", marginTop: 12, overflow: "hidden" }}>
               <div style={{ height: "100%", width: `${exportState.progress * 100}%`, background: accent, transition: "width .12s linear" }} />
             </div>
           )}
@@ -2366,7 +2625,7 @@ export default function LogoMotionApp() {
           <button
             onClick={downloadStaticSvg}
             className="lm-chip"
-            style={{ width: "100%", padding: "13px 16px", borderRadius: 999, fontSize: P.body, marginTop: 10, cursor: "pointer" }}
+            style={{ width: "100%", padding: "13px 16px", borderRadius: "var(--radius-pill)", fontSize: P.body, marginTop: 10, cursor: "pointer" }}
           >
             Export still SVG · {formatId}
           </button>
@@ -2375,7 +2634,7 @@ export default function LogoMotionApp() {
             onClick={exportImage}
             disabled={exportState.status === "rendering" || !model}
             className="lm-chip"
-            style={{ width: "100%", padding: "13px 16px", borderRadius: 999, fontSize: P.body, marginTop: 10, cursor: "pointer" }}
+            style={{ width: "100%", padding: "13px 16px", borderRadius: "var(--radius-pill)", fontSize: P.body, marginTop: 10, cursor: "pointer" }}
           >
             Export image PNG · {format.w}×{format.h}
           </button>
@@ -2410,11 +2669,42 @@ export default function LogoMotionApp() {
           <button
             disabled
             className="lm-chip"
-            style={{ width: "100%", padding: "13px 16px", borderRadius: 999, fontSize: P.body, opacity: 0.45 }}
+            style={{ width: "100%", padding: "13px 16px", borderRadius: "var(--radius-pill)", fontSize: P.body, opacity: 0.45 }}
           >
             Choose audio — not available yet
           </button>
         </Panel>
+
+        {/* FOOTER */}
+        <div
+          style={{
+            marginTop: P.gap, paddingTop: P.pad, paddingBottom: P.pad,
+            borderTop: "1px solid #24242B", textAlign: "center",
+          }}
+        >
+          <a
+            href="https://www.instagram.com/alitheartist.sa"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="lm-ig"
+            style={{
+              display: "inline-flex", alignItems: "center", gap: 8,
+              fontSize: P.body, textDecoration: "none", padding: "10px 18px",
+              borderRadius: "var(--radius-pill)",
+            }}
+          >
+            {/* Instagram glyph, drawn inline so there's no icon dependency */}
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+              <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+              <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
+            </svg>
+            @alitheartist.sa
+          </a>
+          <p className="lm-muted" style={{ fontSize: P.small, marginTop: 8 }}>
+            Logo Construction — designed and built by Ali Alarbash
+          </p>
+        </div>
 
       </div>
     </div>
